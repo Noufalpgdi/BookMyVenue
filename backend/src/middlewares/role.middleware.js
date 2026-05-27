@@ -1,8 +1,8 @@
-const authorize  = (userRoles)=>{
+const authorize  = (...roles)=>{
     return (req,res,next)=>{
         try
         {
-            if(!userRoles.includes(req.user.role))
+            if(!roles.includes(req.user.role))
             {
                 return res.status(403).json({
                     success:false,
