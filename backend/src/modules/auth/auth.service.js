@@ -109,7 +109,32 @@ const login= async (userData)=>{
     }
 }
 
+const getProfile  = async (userId)=>{
+    const user = await prisma.user.findUnique({
+        where:{
+            id:userId
+        }
+    });
+    if(!user)
+    {
+        return {
+            success:false,
+            message:"User Not Found"
+        }
+    }
+    return {
+        success:true,
+        user:{
+            id:user.id,
+            name:user.name,
+            email:user.email,
+            role:user.role
+        }
+    }
+}
+
 module.exports={
     register,
-    login
+    login,
+    getProfile
 }

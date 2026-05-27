@@ -38,7 +38,28 @@ const login= async (req,res)=>{
     
 }
 
+const getProfile  = async (req,res)=>{
+    try
+    {
+        const result = await authService.getProfile(req.user.userId);
+        if(!result.success)
+        {
+            return res.status(404).json(result);
+        }
+        res.status(200).json(result);
+    }
+    catch(error)
+    {
+        res.status(500).json({
+            success:false,
+            message:error.message
+        });
+    }
+    
+}
+
 module.exports={
     register,
-    login
+    login,
+    getProfile 
 }
