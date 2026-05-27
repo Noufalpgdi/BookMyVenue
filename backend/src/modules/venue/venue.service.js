@@ -48,6 +48,38 @@ const create = async (venueDetails,userId)=>{
 
 }
 
+const getAll = async ()=>{
+    const venues  = await prisma.venue.findMany();
+    return{
+        success:true,
+        count:venues.length,
+        venues 
+    }
+}
+
+const getById = async (id)=>
+{
+    
+    const venue = await prisma.venue.findUnique({
+        where:{
+            id
+        }
+    });
+    if(!venue){
+        return {
+            success:false,
+            message:"Venue not found"
+        };
+    }
+
+    return {
+        success:true,
+        venue
+    };
+}
+
 module.exports={
-    create
+    create,
+    getAll,
+    getById
 }

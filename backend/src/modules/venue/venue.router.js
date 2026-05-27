@@ -12,4 +12,8 @@ router.post(
     venuController.create
 );
 
+router.get("/",venuController.getAll);
+
+router.get("/:id",venuController.getById)
+
 module.exports = router;
