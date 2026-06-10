@@ -1,4 +1,7 @@
 const prisma = require('../../config/prisma');
+const AppError = require('../../utils/AppError');
+const {validateStringField} = require('../../utils/validators');
+
 
 const create = async (venueDetails,userId)=>{
     const {
@@ -16,12 +19,13 @@ const create = async (venueDetails,userId)=>{
     const normalizedCity = city?.trim();
     const normalizedCapacity = Number(capacity);
     
-    if(!normalizedName || !normalizedDescription || !normalizedAddress || !normalizedCity ||  !Number.isInteger(normalizedCapacity) || normalizedCapacity <= 0)
+    if(!normalizedName || !normalizedDescription || !normalizedAddress || !normalizedCity )
     {
-        return {
-            success:false,
-            message:"Please Fill all the required field"
-        }
+        throw new AppError("Please fill all the required fields",400);
+    }
+    if(!Number.isInteger(normalizedCapacity) || normalizedCapacity <= 0)
+    {
+        throw new AppError("Invalid capacity",400);
     }
     const newVenue = await prisma.venue.create({
         data:{
@@ -36,14 +40,7 @@ const create = async (venueDetails,userId)=>{
     return {
             "success":true,
             "message":"Venue created successfully",
-            "venue":{
-                "id":newVenue.id,
-                "name":newVenue.name,
-                "address":newVenue.address,
-                "city":newVenue.city,
-                "ownerId":newVenue.ownerId,
-                "capacity":newVenue.capacity
-            }
+            "venue":newVenue
         }
 
 }
@@ -66,10 +63,7 @@ const getById = async (id)=>
         }
     });
     if(!venue){
-        return {
-            success:false,
-            message:"Venue not found"
-        };
+        throw new AppError("Venue not found",404)
     }
 
     return {
@@ -78,8 +72,85 @@ const getById = async (id)=>
     };
 }
 
+const updateVenue = async (id,user,venueDetails)=>{
+    const venue = await prisma.venue.findUnique({
+        where:{id}
+    });
+    if(!venue)
+    {
+        throw new AppError("Venue not found",404);
+    }
+    if(venue.ownerId !== user.userId && user.role !=="ADMIN")
+    {
+        throw new AppError("Permission denied",403);
+    }
+    const {name,description,address,city,capacity} = venueDetails;
+    const updateData = {};
+    if(name!==undefined)
+    {
+        updateData.name = validateStringField(name,"Name");
+    }
+    if(description!==undefined)
+    {
+        updateData.description = validateStringField(description,"Description");
+    }
+    if(address!==undefined)
+    {
+        updateData.address = validateStringField(address,"Address");
+    }
+    if(city!==undefined)
+    {
+        updateData.city = validateStringField(city,"City")
+    }
+    if(capacity !== undefined){
+        const normalizedCapacity = Number(capacity);
+        if(!Number.isInteger(normalizedCapacity) || normalizedCapacity <= 0)
+        {
+            throw new AppError("Invalid capacity",400);
+        }
+        updateData.capacity = normalizedCapacity;
+    }
+    if(Object.keys(updateData).length === 0)
+    {
+        throw new AppError("No fields provided for update",400)
+    }
+    const updatedVenue  = await prisma.venue.update({
+        where:{ id },
+        data:updateData
+    });
+    return {
+            success:true,
+            message:"Venue update successful",
+            venue:updatedVenue
+     }
+    
+}
+
+const deleteVenue = async (id,user)=>{
+    const venue = await prisma.venue.findUnique({
+    where:{id}
+    });
+    if(!venue)
+    {
+        throw new AppError("Venue not found",404);
+    }
+    if(venue.ownerId !== user.userId && user.role !=="ADMIN")
+    {
+        throw new AppError("Permission denied",403);
+    }
+    const deletedVenue = await prisma.venue.delete({
+        where:{id}
+    });
+    return {
+        success:true,
+        message:"Venue deleted successful"
+    }
+}
+
 module.exports={
     create,
     getAll,
-    getById
+    getById,
+    updateVenue,
+    deleteVenue
 }

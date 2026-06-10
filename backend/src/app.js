@@ -1,5 +1,6 @@
 const express = require('express');
 const router=require('./routes/index');
+const errorMiddleware = require('./middlewares/error.middleware');
 
 
 const app = express();
@@ -12,5 +13,6 @@ app.get("/", (req, res) => {
     });
 });
 app.use("/api/v1",router);
+app.use(errorMiddleware);
 
 module.exports=app;
