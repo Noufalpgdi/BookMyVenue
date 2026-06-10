@@ -17,6 +17,7 @@ router.get("/",venuController.getAll);
 
 router.get("/:id",venuController.getById);
 
+
 router.put(
     "/:id",
     authMiddleware,

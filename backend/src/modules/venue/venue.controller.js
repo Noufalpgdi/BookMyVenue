@@ -19,7 +19,7 @@ const create = async(req,res,next)=>{
 const getAll = async (req,res)=>{
     try
     {
-        const result = await venuService.getAll();
+        const result = await venuService.getAll(req.query);
         return res.status(200).json(result);
     }
     catch(error)

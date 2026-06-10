@@ -1,6 +1,7 @@
 const prisma = require('../../config/prisma');
 const AppError = require('../../utils/AppError');
 const {validateStringField} = require('../../utils/validators');
+const { get } = require('./venue.router');
 
 
 const create = async (venueDetails,userId)=>{
@@ -45,8 +46,37 @@ const create = async (venueDetails,userId)=>{
 
 }
 
-const getAll = async ()=>{
-    const venues  = await prisma.venue.findMany();
+const getAll = async (query)=>{
+    const { city, name, capacity } = query;
+    const where = {};
+    if(city?.trim())
+    {
+        where.city = {
+            equals: city.trim(),
+            mode:"insensitive"
+        };
+    }
+    // Name Filter
+    if(name?.trim())
+    {
+        where.name = {
+            contains: name.trim(),
+            mode:"insensitive"
+        };
+    }
+    // Capacity Filter
+    if(capacity !== undefined)
+    {
+        const normalizedCapacity=Number(capacity);
+        if(!Number.isInteger(normalizedCapacity) || normalizedCapacity <= 0)
+        {
+            throw new AppError("Invalid capacity",400);
+        }
+        where.capacity={
+            gte:normalizedCapacity
+        };
+    }
+    const venues  = await prisma.venue.findMany({where});
     return{
         success:true,
         count:venues.length,
