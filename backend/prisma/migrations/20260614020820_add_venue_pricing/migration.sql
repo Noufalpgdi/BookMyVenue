@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Venue" ADD COLUMN     "pricePerHour" DECIMAL(10,2) NOT NULL DEFAULT 1000;

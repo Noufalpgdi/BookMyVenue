@@ -1,7 +1,6 @@
 const prisma = require('../../config/prisma');
 const AppError = require('../../utils/AppError');
 const {validateStringField} = require('../../utils/validators');
-const { get } = require('./venue.router');
 
 
 const create = async (venueDetails,userId)=>{

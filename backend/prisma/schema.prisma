@@ -39,6 +39,7 @@ model Venue{
   address String
   city String
   capacity Int
+  pricePerHour Decimal @db.Decimal(10,2)
   ownerId Int 
   owner User @relation(fields: [ownerId], references: [id])
 
