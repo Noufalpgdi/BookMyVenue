@@ -5,3 +5,5 @@ const bookingController = require('./booking.controller');
 const router = express.Router();
 
 router.post("/",authMiddleware,bookingController.bookVenue);
+
+module.exports = router;
