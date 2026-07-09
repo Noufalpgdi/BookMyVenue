@@ -9,10 +9,6 @@ const register=async (userData)=>{
     const {name,email,password} = userData;
     if(!name?.trim() || !email?.trim() || !password?.trim())
     {
-        //return {
-            //"success":false,
-            //"message":"All fields are required"
-        //}
         throw new AppError("All fields are required",400);
     }
     const normalizedName = name.trim();
@@ -24,19 +20,11 @@ const register=async (userData)=>{
     });
     if(existingUser)
     {
-        //return {
-            //"success":false,
-            //"message":"User already exists"
-        //}
         throw new AppError("User already exists",400);
     }
     const normalizedPassword = password.trim();
     if(normalizedPassword.length < 8)
     {
-        //return {
-            //success:false,
-            //message:"Password must be at least 8 characters"
-        //}
         throw new AppError("Password must be at least 8 characters",400);
     }
     
@@ -64,10 +52,6 @@ const login= async (userData)=>{
     const {email,password}=userData;
     if(!email?.trim() || !password?.trim())
     {
-        //return {
-            //"success":false,
-            //"message":"Email and password are required"
-        //}
         throw new AppError("Email and password are required",400);
     }
     const normalizedEmail = email.toLowerCase().trim();
@@ -76,10 +60,6 @@ const login= async (userData)=>{
     });
     if(!user)
     {
-        //return{
-            //"success":false,
-            //"message":"Invalid email or password"
-        //}
         throw new AppError("Invalid email or password",401);
     }
     const normalizedPassword = password.trim();
@@ -89,10 +69,6 @@ const login= async (userData)=>{
     );
     if(!isPasswordValid)
     {
-        //return{
-            //"success":false,
-            //"message":"Invalid email or password"
-        //}
         throw new AppError("Invalid email or password",401);
     }
     const token = jwt.sign({
@@ -127,10 +103,6 @@ const getProfile  = async (userId)=>{
     });
     if(!user)
     {
-        //return {
-            //success:false,
-            //message:"User Not Found"
-        //}
         throw new AppError("User Not Found",404);
     }
     return {

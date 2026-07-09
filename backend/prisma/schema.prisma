@@ -36,17 +36,59 @@ model Venue{
   id Int @id @default(autoincrement())
   name String
   description String
+
   address String
   city String
+  district String
+  state String
+
+  latitude  Decimal? @db.Decimal(10,8)
+  longitude Decimal? @db.Decimal(11,8)
+
   capacity Int
   pricePerHour Decimal @db.Decimal(10,2)
+  imageUrl String?
+
   ownerId Int 
   owner User @relation(fields: [ownerId], references: [id])
 
   bookings  Booking[]
 
+  venueType VenueType
+  amenities String[]
+
+  approvalStatus VenueApprovalStatus @default(PENDING)
+
+  isActive Boolean @default(true)
+  isDeleted Boolean @default(false)
+  
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([ownerId])
+  @@index([approvalStatus])
+  @@index([venueType])
+  @@index([city])
+  @@index([district])
+  @@index([state])
+  @@index([approvalStatus, city])
+  @@index([approvalStatus, venueType])
+  @@index([approvalStatus, city, venueType])
+}
+enum VenueType {
+  AUDITORIUM
+  CONFERENCE_HALL
+  PARTY_HALL
+  OUTDOOR_VENUE
+  BANQUET_HALL
+  MEETING_ROOM
+  SPORTS_ARENA
+  OTHER
+}
+enum VenueApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 model Booking{
@@ -59,11 +101,17 @@ model Booking{
   endTime DateTime
   totalAmount Decimal @db.Decimal(10, 2)
   status BookingStatus @default(PENDING)
+  isOwnerBooking Boolean        @default(false)
+  payment Payment?
+  isDeleted       Boolean  @default(false)
+  cancelledAt     DateTime?
   createdAt DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  @@index([venueId])
+
   @@index([userId])
+  // Optimizes overlap checking queries
+  @@index([venueId, startTime, endTime])
 }
 
 enum BookingStatus {
@@ -71,4 +119,44 @@ enum BookingStatus {
   CONFIRMED
   CANCELLED
   COMPLETED
+}
+
+model Payment {
+  id                Int      @id @default(autoincrement())
+
+  bookingId         Int      @unique
+  booking           Booking  @relation(fields:[bookingId], references:[id])
+
+  amount            Decimal  @db.Decimal(10,2)
+  currency          String   @default("INR")
+
+  status            PaymentStatus @default(PENDING)
+  provider          PaymentProvider
+
+  providerOrderId   String? @unique
+  providerPaymentId String? @unique
+  transactionId     String? @unique
+
+  refundedAt        DateTime?
+  refundAmount Decimal? @db.Decimal(10,2)
+
+  failureReason String?
+  refundReason  String?
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+enum PaymentProvider {
+  RAZORPAY
+  STRIPE
+  CASHFREE
 }

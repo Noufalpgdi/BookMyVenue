@@ -1,13 +1,12 @@
+const prisma = require('../../config/prisma');
 const venuService = require('./venue.service');
 
 const create = async(req,res,next)=>{
     try
     {
-        const result = await venuService.create(req.body,req.user.userId);
-        //if(!result.success)
-        //{
-            //return res.status(400).json(result);
-        //}
+        console.log(req.file);
+        console.log(req.body);
+        const result = await venuService.create(req.body,req.user.userId,req.file);
         return res.status(201).json(result);
     }
     catch(error)
@@ -16,7 +15,7 @@ const create = async(req,res,next)=>{
     }
 }
 
-const getAll = async (req,res)=>{
+const getAll = async (req,res,next)=>{
     try
     {
         const result = await venuService.getAll(req.query);
@@ -24,40 +23,74 @@ const getAll = async (req,res)=>{
     }
     catch(error)
     {
-        return res.status(500).json({
-            success:false,
-            message:error.message
-        });
+        next(error);
+    }
+}
+
+const getMyVenues = async(req,res,next)=>
+{
+    try
+    {
+        const result = await venuService.getMyVenues(req.user.userId,req.query);
+        return res.status(200).json(result);
+    }
+    catch(error)
+    {
+        next(error);
     }
 }
 
 const getById = async (req,res,next)=>{
     try
     {
-        const id = Number(req.params.id);
-        if (!Number.isInteger(id) || id <= 0) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid venue id"
-            });
-        }
-        const result = await venuService.getById(id);
-
-        //if(!result.success)
-        //{
-            //return res.status(404).json(result);
-        //}
+        const result = await venuService.getById(req.params.id);
 
         return res.status(200).json(result);
     }
     catch(error)
     {
-        //return res.status(500).json({
-            //success:false,
-            //message:error.message
-        //});
         next(error)
     }
+}
+
+const getAllPendingApprovalVenues =async(req,res,next)=>{
+    try
+    {
+        const { page, limit } = req.query;
+        const result = await venuService.getAllPendingApprovalVenues(page, limit);
+        return res.status(200).json(result);
+    }
+    catch(error)
+    {
+        next(error);
+    }
+}
+
+const approveVenue = async(req,res,next)=>{
+    try
+    {
+        const id = req.params.id;
+        const result = await venuService.approveVenue(id);
+        return res.status(200).json(result);
+    }
+    catch(error)
+    {
+        next(error);
+    }
+}
+
+const rejectVenue = async(req,res,next)=>{
+    try
+    {
+        const id = req.params.id;
+        const result = await venuService.rejectVenue(id);
+        return res.status(200).json(result);
+    }
+    catch(error)
+    {
+        next(error);
+    }
+    
 }
 
 const updateVenue = async (req,res,next)=>{
@@ -66,7 +99,8 @@ const updateVenue = async (req,res,next)=>{
         const result = await venuService.updateVenue(
             req.params.id,
             req.user,
-            req.body
+            req.body,
+            req.file
         );
         return res.status(200).json(result);
     }
@@ -92,10 +126,42 @@ const deleteVenue = async (req,res,next)=>{
     
 }
 
+const activate = async(req,res,next)=>{
+    try
+    {
+        const id = req.params.id;
+        const result = await venuService.activate(id,req.user);
+        return res.status(200).json(result);
+    }
+    catch(error)
+    {
+        next(error);
+    }
+}
+
+const deactivate = async(req,res,next)=>{
+    try
+    {
+        const id = req.params.id;
+        const result = await venuService.deactivate(id,req.user);
+        return res.status(200).json(result);
+    }
+    catch(error)
+    {
+        next(error);
+    }
+}
+
 module.exports = {
     create,
     getAll,
+    getMyVenues,
     getById,
+    getAllPendingApprovalVenues,
+    approveVenue,
+    rejectVenue,
     updateVenue,
-    deleteVenue
+    deleteVenue,
+    activate,
+    deactivate
 }
