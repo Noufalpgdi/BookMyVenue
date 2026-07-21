@@ -1,4 +1,4 @@
-const { VenueType } = require("@prisma/client");
+const { VenueType,VenueApprovalStatus } = require("@prisma/client");
 const prisma = require('../../config/prisma');
 const AppError = require('../../utils/AppError');
 const {validateStringField} = require('../../utils/validators');
@@ -280,6 +280,32 @@ const getAll = async (query)=>{
         count: venues.length,
         venues
     };
+}
+
+const getFilters = async ()=>
+{
+    const stateRecords = await prisma.venue.findMany({
+        where:{
+            approvalStatus:VenueApprovalStatus.APPROVED,
+            isDeleted: false
+        },
+        select:{
+            state:true
+        },
+        distinct: ["state"],
+        orderBy: {
+            state: "asc"
+        }
+    });
+    const states = stateRecords.map(item => item.state);
+    const venueTypes = Object.values(VenueType);
+    return{
+        success:true,
+        filters: {
+            states,
+            venueTypes
+        }
+    }
 }
 
 const getMyVenues = async(ownerId,query)=>{
@@ -975,6 +1001,7 @@ const deactivate = async(id,user)=>{
 module.exports={
     create,
     getAll,
+    getFilters,
     getMyVenues,
     getById,
     getAllPendingApprovalVenues,

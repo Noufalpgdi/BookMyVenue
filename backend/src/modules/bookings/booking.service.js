@@ -1,7 +1,7 @@
 const AppError = require('../../utils/AppError');
 const prisma = require('../../config/prisma');
 const { Prisma } = require('@prisma/client');
-//const { useId } = require('react');
+const { PaymentProvider, BookingStatus, PaymentStatus, VenueApprovalStatus, UserRole} = require("@prisma/client");
 
 const MAX_RETRIES = 3;
 
@@ -43,7 +43,7 @@ const bookVenue = async (bookingDetails,userId)=>
                 where:
                 {
                     id: normalizedVenueId,
-                    approvalStatus: "APPROVED",
+                    approvalStatus: VenueApprovalStatus.APPROVED,
                     isActive: true,
                     isDeleted: false
                 },
@@ -64,7 +64,7 @@ const bookVenue = async (bookingDetails,userId)=>
                     venueId: normalizedVenueId,
                     isDeleted: false,
                     status:{
-                            in:["PENDING","CONFIRMED"]
+                            in:[BookingStatus.PENDING,BookingStatus.CONFIRMED]
                     },
                     startTime:{
                         lt: normalizedEndTime
@@ -116,6 +116,13 @@ const bookVenue = async (bookingDetails,userId)=>
                     }
                 }
             }
+            });
+            await tx.payment.create({
+                data: {
+                    bookingId: newBooking.id,
+                    amount: totalAmount,
+                    provider: PaymentProvider.RAZORPAY
+                }
             });
                 return newBooking; 
             },
@@ -171,46 +178,54 @@ const getMyBookings = async (userId,page = 1,limit = 10)=>{
         throw new AppError("Maximum limit is 100", 400);
     }
     const skip =(normalizedPage - 1) * normalizedLimit;
-
-    const bookings = await prisma.booking.findMany({
-        where: {
-            userId,
-            isDeleted: false
-        },
-        skip,
-        take: normalizedLimit,
-        select: {
-            id: true,
-            startTime: true,
-            endTime: true,
-            totalAmount: true,
-            status: true,
-            cancelledAt: true,
-            isOwnerBooking: true,
-            createdAt: true,
-            updatedAt: true,
-            venue: {
-                select: {
-                    id: true,
-                    name: true,
-                    city: true,
-                    imageUrl: true
+    const [bookings, totalRecords] = await Promise.all([
+        prisma.booking.findMany({
+            where: {
+                userId,
+                isDeleted: false
+            },
+            skip,
+            take: normalizedLimit,
+            select: {
+                id: true,
+                startTime: true,
+                endTime: true,
+                totalAmount: true,
+                status: true,
+                cancelledAt: true,
+                isOwnerBooking: true,
+                createdAt: true,
+                updatedAt: true,
+                venue: {
+                    select: {
+                        id: true,
+                        name: true,
+                        city: true,
+                        imageUrl: true
+                    }
+                },
+                payment: {
+                    select: {
+                        amount: true,
+                        status: true
+                    }
                 }
+            },
+            orderBy: {
+                startTime: "desc"
             }
-        },
-        orderBy: {
-            startTime: "desc"
-        }
-    });
-    const totalRecords = await prisma.booking.count({
-        where: 
-        {
-            userId,
-            isDeleted: false
-        }
-    });
-
-    const totalPages =Math.ceil(totalRecords / normalizedLimit);
+        }),
+        prisma.booking.count({
+            where: 
+            {
+                userId,
+                isDeleted: false
+            }
+        })
+    ]);
+    const totalPages = Math.ceil(
+        totalRecords / normalizedLimit
+    );
     return{
         success: true,
         page: normalizedPage,
@@ -252,6 +267,14 @@ const getBookingById = async (id,user)=>{
                     name: true,
                     email: true
                 }
+            },
+            payment: {
+                select: {
+                    amount: true,
+                    currency: true,
+                    status: true,
+                    provider: true
+                }
             }
         }
     });
@@ -261,33 +284,33 @@ const getBookingById = async (id,user)=>{
             404
         );
     }
-    if (booking.userId !== user.userId && booking.venue.ownerId !== user.userId && user.role !== "ADMIN") 
-    {
-        throw new AppError(
-            "Permission denied",
-            403
-        );
+    const canViewBooking = booking.userId === user.userId || booking.venue.ownerId === user.userId || user.role === UserRole.ADMIN;
+    if (!canViewBooking) {
+        throw new AppError("Permission denied", 403);
     }
-    delete booking.venue.ownerId;
+    const { ownerId, ...venue } = booking.venue;
     return {
         success:true,
-        booking
+        booking:{
+            ...booking,
+            venue
+        }
+        
     }
 }
 
 const cancelBooking =async(id,user)=>{
-    const normalizedId = Number(id);
-    if (!Number.isInteger(normalizedId) || normalizedId <= 0) 
+    const bookingIdNumber = Number(id);
+    if (!Number.isInteger(bookingIdNumber) || bookingIdNumber <= 0) 
     {
         throw new AppError(
             "Invalid booking id",
             400
         );
     }
-    const booking = await prisma.booking.findFirst({
+    const booking = await prisma.booking.findUnique({
         where:{
-            id:normalizedId,
-            isDeleted: false
+            id:bookingIdNumber
         },
         include:{
             venue:{
@@ -295,51 +318,61 @@ const cancelBooking =async(id,user)=>{
                     id: true,
                     ownerId: true
                 }
+            },
+            payment: {
+                select: {
+                    status: true
+                }
             }
         }
     });
-    if (!booking) 
+    if (!booking || booking.isDeleted) 
     {
         throw new AppError(
             "Booking not found",
             404
         );
     }
-    if (booking.userId !== user.userId && booking.venue.ownerId !== user.userId && user.role !== "ADMIN") 
-    {
-        throw new AppError(
-            "Permission denied",
-            403
-        );
+    const canCancel = booking.userId === user.userId || booking.venue.ownerId === user.userId || user.role === UserRole.ADMIN;
+    if (!canCancel) {
+        throw new AppError("Permission denied", 403);
     }
-    if (booking.status === "CANCELLED") 
+    if (booking.status === BookingStatus.CANCELLED) 
     {
         throw new AppError(
             "Booking already cancelled",
             409
         );
     }
-    if (booking.status === "COMPLETED") 
+    if (booking.status === BookingStatus.COMPLETED) 
     {
         throw new AppError(
             "Completed bookings cannot be cancelled",
             409
         );
     }
-    if (booking.startTime <= new Date()) 
+    const now = new Date();
+    if (booking.startTime <= now) 
     {
         throw new AppError(
             "Booking cannot be cancelled after it has started",
             409
         );
     }
+    if (booking.payment && booking.payment.status === PaymentStatus.SUCCESS) 
+    {
+        throw new AppError(
+            "Paid bookings cannot be cancelled until refund support is implemented",
+            409
+        );
+    }
     const updatedBooking = await prisma.booking.update({
         where: {
-            id: normalizedId
+            id: bookingIdNumber
         },
         data: {
-            status: "CANCELLED",
-            cancelledAt: new Date()
+            status: BookingStatus.CANCELLED,
+            cancelledAt: now
         },
         include:{
             venue:{
@@ -348,6 +381,12 @@ const cancelBooking =async(id,user)=>{
                     name: true,
                     city: true,
                     imageUrl: true
+                }
+            },
+            payment: {
+                select: {
+                    amount: true,
+                    status: true
                 }
             }
         }
@@ -403,50 +442,57 @@ const getBookingsByVenueId =async (venueId,user,page = 1,limit = 10)=>{
             404
         );
     }
-    if (venue.ownerId !== user.userId && user.role !== "ADMIN")
-    {
-        throw new AppError(
-            "Permission denied",
-            403
-        );
+    const canViewVenueBookings = venue.ownerId === user.userId || user.role === UserRole.ADMIN;
+    if (!canViewVenueBookings) {
+        throw new AppError("Permission denied", 403);
     }
-    const bookings = await prisma.booking.findMany({
-        where: {
-            venueId: normalizedVenueId,
-            isDeleted: false
-        },
-        skip,
-        take: normalizedLimit,
-        select:{
-            id: true,
-            startTime: true,
-            endTime: true,
-            totalAmount: true,
-            status: true,
-            cancelledAt: true,
-            isOwnerBooking: true,
-            createdAt: true,
-            updatedAt: true,
-            user: {
-                select: {
-                    id: true,
-                    name: true,
-                    email: true
+    const [bookings, totalRecords] = await Promise.all([
+        prisma.booking.findMany({
+            where: {
+                venueId: normalizedVenueId,
+                isDeleted: false
+            },
+            skip,
+            take: normalizedLimit,
+            select:{
+                id: true,
+                startTime: true,
+                endTime: true,
+                totalAmount: true,
+                status: true,
+                cancelledAt: true,
+                isOwnerBooking: true,
+                createdAt: true,
+                updatedAt: true,
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true
+                    }
+                },
+                payment: {
+                    select: {
+                        amount: true,
+                        status: true
+                    }
                 }
             },
-        },
-        orderBy: {
-            startTime: "desc"
-        }
-    });
-    const totalRecords = await prisma.booking.count({
-        where: {
-            venueId: normalizedVenueId,
-            isDeleted: false
-        }
-    });
+            orderBy: {
+                startTime: "desc"
+            }
+        }),
+        prisma.booking.count({
+            where: {
+                venueId: normalizedVenueId,
+                isDeleted: false
+            }
+        })
+    ]);
 
-    const totalPages = Math.ceil( totalRecords / normalizedLimit );
+    const totalPages = Math.ceil( 
+        totalRecords / normalizedLimit 
+    );
     return {
         success: true,
         page: normalizedPage,

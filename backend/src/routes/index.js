@@ -2,11 +2,13 @@ const express = require('express');
 const authRouter = require('../modules/auth/auth.router');
 const venueRouter = require('../modules/venue/venue.router');
 const bookingRouter = require('../modules/bookings/booking.router');
+const paymentRouter = require("../modules/payment/payment.routes");
 
 const router=express.Router();
 
 router.use("/auth",authRouter);
 router.use("/venue",venueRouter);
 router.use("/bookings",bookingRouter);
+router.use("/payments",paymentRouter);
 
 module.exports=router;

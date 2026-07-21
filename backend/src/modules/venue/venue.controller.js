@@ -27,6 +27,20 @@ const getAll = async (req,res,next)=>{
     }
 }
 
+const getFilters =async (req,res,next)=>
+{
+    try
+    {
+        const result = await venuService.getFilters();
+        return res.status(200).json(result);
+    }
+    catch(error)
+    {
+        console.error("getFilters Error:", error);
+        next(error);
+    }
+}
+
 const getMyVenues = async(req,res,next)=>
 {
     try
@@ -155,6 +169,7 @@ const deactivate = async(req,res,next)=>{
 module.exports = {
     create,
     getAll,
+    getFilters,
     getMyVenues,
     getById,
     getAllPendingApprovalVenues,

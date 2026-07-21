@@ -6,8 +6,20 @@ const getVenues = async (filters = {}) => {
 
     const params = {};
 
+    if (filters.name?.trim()) {
+        params.name = filters.name;
+    }
+
+    if (filters.state?.trim()) {
+        params.state = filters.state;
+    }
+
     if (filters.city?.trim()) {
         params.city = filters.city;
+    }
+
+    if (filters.venueType?.trim()) {
+        params.venueType = filters.venueType;
     }
 
     if (filters.capacity) {
@@ -25,6 +37,11 @@ export const getVenueById = async (id) => {
 
     const response = await axios.get(`${BASE_URL}/${id}`);
 
+    return response.data;
+};
+
+export const getFilters = async () => {
+    const response = await axios.get(`${BASE_URL}/filters`);
     return response.data;
 };
 

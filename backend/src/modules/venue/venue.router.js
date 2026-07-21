@@ -18,6 +18,11 @@ router.post(
 router.get("/",venuController.getAll);
 
 router.get(
+    "/filters",
+    venuController.getFilters
+);
+
+router.get(
     "/my-venues",
     authMiddleware,
     authorize("OWNER","ADMIN"),
