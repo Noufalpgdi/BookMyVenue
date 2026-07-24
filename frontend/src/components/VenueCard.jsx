@@ -2,6 +2,10 @@ import { Link } from "react-router-dom";
 
 function VenueCard({ venue }) {
 
+    const coverImage =
+        venue.images?.[0]?.imageUrl ||
+        "https://via.placeholder.com/600x400?text=No+Image";
+
     return (
         <div
             className="
@@ -17,7 +21,7 @@ function VenueCard({ venue }) {
         >
 
             <img
-                src="https://images.unsplash.com/photo-1519167758481-83f550bb49b3"
+                src={coverImage}
                 alt={venue.name}
                 className="h-60 w-full object-cover"
             />

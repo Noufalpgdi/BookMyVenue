@@ -4,7 +4,7 @@ const AppError = require('../../utils/AppError');
 const {validateStringField} = require('../../utils/validators');
 
 
-const create = async (venueDetails,userId,file)=>{
+const create = async (venueDetails,userId,files)=>{
     const {
         name,
         description,
@@ -29,17 +29,55 @@ const create = async (venueDetails,userId,file)=>{
     const normalizedState = state?.trim();
     const normalizedCapacity = Number(capacity);
     const normalizedPrice = Number(pricePerHour);
-    const normalizedLatitude = latitude !== undefined && latitude !== null ? Number(latitude): null;
+    //const normalizedLatitude = latitude !== undefined && latitude !== null ? Number(latitude): null;
     
     const normalizedVenueType = venueType?.trim()?.toUpperCase();
-    const normalizedLongitude = longitude !== undefined && longitude !== null ? Number(longitude): null;
+
+    const normalizedLatitude =
+    latitude === "" || latitude == null
+        ? null
+        : Number(latitude);
+
+    const normalizedLongitude =
+        longitude === "" || longitude == null
+            ? null
+            : Number(longitude);
+
+
+    //const normalizedLongitude = longitude !== undefined && longitude !== null ? Number(longitude): null;
     
-    const normalizedAmenities = Array.isArray(amenities)
-    ? amenities
-        .filter(a => typeof a === "string")
-        .map(a => a.trim())
-        .filter(Boolean)
-    : [];
+    console.log("Raw venueDetails:", venueDetails);
+    console.log("Raw amenities:", venueDetails.amenities);
+    console.log("Type:", typeof venueDetails.amenities);
+
+    let parsedAmenities = amenities;
+
+    if (typeof parsedAmenities === "string") {
+
+        try {
+
+            parsedAmenities = JSON.parse(parsedAmenities);
+
+        } catch (error) {
+
+            throw new AppError(
+                "Invalid amenities format",
+                400
+            );
+
+        }
+
+    }
+
+    const normalizedAmenities = Array.isArray(parsedAmenities)
+        ? parsedAmenities
+            .filter(a => typeof a === "string")
+            .map(a => a.trim())
+            .filter(Boolean)
+        : [];
+
+    console.log("Parsed amenities:", parsedAmenities);
+    console.log("Normalized amenities:", normalizedAmenities);
     
     if(!normalizedName || !normalizedDescription || !normalizedAddress || !normalizedCity || !normalizedDistrict ||
     !normalizedState || !normalizedVenueType || capacity == null || capacity === "" || pricePerHour == null || pricePerHour === "")
@@ -93,15 +131,19 @@ const create = async (venueDetails,userId,file)=>{
             400
         );
     }
-    if(!file)
+    if(!Array.isArray(files) || files.length === 0)
     {
         throw new AppError(
-            "Venue image is required",
+            "At least one venue image is required",
             400
         );
     }
     const baseUrl = process.env.BASE_URL || "http://localhost:5000";
-    const imageUrl = `${baseUrl}/uploads/venues/${file.filename}`;
+    //const imageUrl = `${baseUrl}/uploads/venues/${file.filename}`;
+    const imageData = files.map((file, index) => ({
+        imageUrl: `${baseUrl}/uploads/venues/${file.filename}`,
+        displayOrder: index
+    }));
     const newVenue = await prisma.venue.create({
         data:{
             name:normalizedName,
@@ -116,8 +158,11 @@ const create = async (venueDetails,userId,file)=>{
             pricePerHour: normalizedPrice,
             venueType: normalizedVenueType,
             amenities: normalizedAmenities,
-            imageUrl,
-            ownerId
+            imageUrl: imageData[0].imageUrl,
+            ownerId,
+            images:{
+                create: imageData
+            }
         },
         select:{
             id: true,
@@ -129,9 +174,17 @@ const create = async (venueDetails,userId,file)=>{
             longitude: true,
             venueType: true,
             amenities: true,
-            imageUrl: true,
             approvalStatus: true,
-            createdAt: true
+            createdAt: true,
+            images:{
+                orderBy:{
+                    displayOrder:"asc"
+                },
+                select:{
+                    imageUrl: true,
+                    displayOrder: true
+                }
+            }
         }
     });
     return {
@@ -244,11 +297,20 @@ const getAll = async (query)=>{
                 state: true,
                 capacity: true,
                 pricePerHour: true,
-                imageUrl: true,
                 venueType: true,
                 amenities: true,
                 latitude: true,
                 longitude: true,
+                imageUrl: true,
+                images: {
+                    orderBy: {
+                        displayOrder: "asc"
+                    },
+                    select: {
+                        imageUrl: true,
+                        displayOrder: true
+                    }
+                },
                 owner: {
                     select: {
                         id: true,
@@ -308,6 +370,14 @@ const getFilters = async ()=>
     }
 }
 
+const getVenueTypes = async ()=>{
+    const venueTypes = Object.values(VenueType);
+    return{
+        success:true,
+        data:venueTypes
+    }
+}
+
 const getMyVenues = async(ownerId,query)=>{
     const {page = 1, limit = 10}=query;
     const normalizedPage = Number(page);
@@ -351,6 +421,15 @@ const getMyVenues = async(ownerId,query)=>{
             approvalStatus: true,
             isActive: true,
             imageUrl: true,
+            images: {
+                orderBy: {
+                    displayOrder: "asc"
+                },
+                select: {
+                    imageUrl: true,
+                    displayOrder: true
+                }
+            },
             createdAt: true,
             updatedAt: true,
             _count: {
@@ -406,6 +485,15 @@ const getById = async (id)=>
             capacity: true,
             pricePerHour: true,
             imageUrl: true,
+            images: {
+                orderBy: {
+                    displayOrder: "asc"
+                },
+                select: {
+                    imageUrl: true,
+                    displayOrder: true
+                }
+            },
             venueType: true,
             amenities: true,
             createdAt: true,
@@ -430,6 +518,76 @@ const getById = async (id)=>
     return {
         success:true,
         venue
+    };
+}
+
+const getVenueForEdit = async (id, user) => {
+
+    const normalizedId = Number(id);
+
+
+    if (!Number.isInteger(normalizedId) || normalizedId <= 0) {
+        throw new AppError("Invalid venue id", 400);
+    }
+
+    const venue = await prisma.venue.findUnique({
+        where: {
+            id: normalizedId
+        },
+        select: {
+            ownerId: true,
+            isDeleted: true,
+            isActive: true,
+
+            id: true,
+            name: true,
+            description: true,
+
+            address: true,
+            city: true,
+            district: true,
+            state: true,
+
+            latitude: true,
+            longitude: true,
+
+            capacity: true,
+            pricePerHour: true,
+
+            imageUrl: true,
+
+            venueType: true,
+            amenities: true,
+
+            images: {
+                orderBy: {
+                    displayOrder: "asc"
+                },
+                select: {
+                    imageUrl: true,
+                    displayOrder: true
+                }
+            }
+        }
+    });
+
+    console.log("3. Venue:", venue);
+
+    if (!venue || venue.isDeleted) {
+        throw new AppError("Venue not found", 404);
+    }
+
+
+    if (venue.ownerId !== user.userId && user.role !== "ADMIN") 
+    {
+        throw new AppError("Permission denied", 403);
+    }
+
+    const { ownerId, isDeleted, ...venueData } = venue;
+
+    return {
+        success: true,
+        venue: venueData
     };
 }
 
@@ -608,7 +766,7 @@ const rejectVenue = async(id)=>{
         venue:rejectedVenue
     }
 }
-const updateVenue = async (id,user,venueDetails,image)=>{
+const updateVenue = async (id,user,venueDetails,files)=>{
     const normalizedId = Number(id);
     if(!Number.isInteger(normalizedId) || normalizedId<=0)
     {
@@ -628,7 +786,6 @@ const updateVenue = async (id,user,venueDetails,image)=>{
     {
         throw new AppError("Permission denied",403);
     }
-    //const {name,description,address,city,capacity,pricePerHour} = venueDetails;
     const {
         name,
         description,
@@ -644,9 +801,16 @@ const updateVenue = async (id,user,venueDetails,image)=>{
         amenities
     } = venueDetails;
     const updateData = {};
-    if(image)
-    {
-        updateData.imageUrl = image.path;
+
+    let imageData = [];
+    if (Array.isArray(files) && files.length > 0) {
+        imageData = files.map((file, index) => ({
+            imageUrl: `${baseUrl}/uploads/venues/${file.filename}`,
+            displayOrder: index
+        }));
+
+        // Keep the legacy imageUrl column in sync
+        updateData.imageUrl = imageData[0].imageUrl;
     }
     if(name!==undefined)
     {
@@ -687,7 +851,7 @@ const updateVenue = async (id,user,venueDetails,image)=>{
     }
     if(isLatitudeProvided)
     {
-        const normalizedLatitude = Number(latitude);
+        const normalizedLatitude = latitude === "" ? null : Number(latitude);
 
         if(isNaN(normalizedLatitude) || normalizedLatitude < -90 || normalizedLatitude > 90)
         {
@@ -702,7 +866,7 @@ const updateVenue = async (id,user,venueDetails,image)=>{
 
     if(isLongitudeProvided)
     {
-        const normalizedLongitude = Number(longitude);
+        const normalizedLongitude = longitude === "" ? null : Number(longitude);
 
         if(isNaN(normalizedLongitude) || normalizedLongitude < -180 || normalizedLongitude > 180)
         {
@@ -742,22 +906,37 @@ const updateVenue = async (id,user,venueDetails,image)=>{
     }
     if(amenities !== undefined)
     {
-        if(!Array.isArray(amenities))
+        let parsedAmenities = amenities;
+        if (typeof parsedAmenities === "string") 
         {
+
+            try 
+            {
+                parsedAmenities = JSON.parse(parsedAmenities);
+
+            } catch 
+            {
+                throw new AppError(
+                    "Invalid amenities format",
+                    400
+                );
+
+            }
+
+        }
+        if (!Array.isArray(parsedAmenities)) {
+
             throw new AppError(
                 "Amenities should be an array",
                 400
             );
+
         }
 
         const normalizedAmenities =
-            amenities
-                .filter(
-                    a => typeof a === "string"
-                )
-                .map(
-                    a => a.trim()
-                )
+            parsedAmenities
+                .filter(a => typeof a === "string")
+                .map(a => a.trim())
                 .filter(Boolean);
 
         if(normalizedAmenities.length === 0)
@@ -795,25 +974,46 @@ const updateVenue = async (id,user,venueDetails,image)=>{
     {
         updateData.approvalStatus = "PENDING";
     }
-    const updatedVenue  = await prisma.venue.update({
-        where:{ 
-            id:normalizedId
-        },
-        data:updateData,
-        select:{
-            id: true,
-            name: true,
-            city: true,
-            district: true,
-            state: true,
-            venueType: true,
-            capacity: true,
-            pricePerHour: true,
-            isActive: true,
-            approvalStatus: true,
-            updatedAt: true
+    
+    const updatedVenue = await prisma.$transaction(async (tx) => {
+        const updatedVenue = await tx.venue.update({
+            where:{ 
+                id:normalizedId
+            },
+            data:updateData,
+            select:{
+                id: true,
+                name: true,
+                city: true,
+                district: true,
+                state: true,
+                venueType: true,
+                capacity: true,
+                pricePerHour: true,
+                isActive: true,
+                approvalStatus: true,
+                updatedAt: true
+            }
+        });
+        if(imageData.length>0)
+        {
+            const venueImages = imageData.map(image => ({
+                venueId: normalizedId,
+                imageUrl: image.imageUrl,
+                displayOrder: image.displayOrder
+            }));
+            await tx.venueImage.deleteMany({
+                where:{ 
+                        venueId:normalizedId
+                }
+            });
+            await tx.venueImage.createMany({
+                data: venueImages  
+            });
         }
+        return updatedVenue;
     });
+    
     const message =
     updateData.approvalStatus === "PENDING"
         ? "Venue updated successfully and submitted for re-approval"
@@ -1002,8 +1202,10 @@ module.exports={
     create,
     getAll,
     getFilters,
+    getVenueTypes,
     getMyVenues,
     getById,
+    getVenueForEdit,
     getAllPendingApprovalVenues,
     approveVenue,
     rejectVenue,

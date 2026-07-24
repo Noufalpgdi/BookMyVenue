@@ -6,7 +6,7 @@ const jwt = require('jsonwebtoken');
 const SALT_ROUNDS = 10;
 
 const register=async (userData)=>{
-    const {name,email,password} = userData;
+    const {name,email,password,role} = userData;
     if(!name?.trim() || !email?.trim() || !password?.trim())
     {
         throw new AppError("All fields are required",400);
@@ -29,11 +29,16 @@ const register=async (userData)=>{
     }
     
     const hashedPassword = await bcrypt.hash(normalizedPassword,SALT_ROUNDS);
-    const new_user= await prisma.user.create({
+
+    const userRole = role === "OWNER" ? "OWNER" : "USER";
+
+    const newUser = await prisma.user.create({
         data:{
             name:normalizedName,
             email:normalizedEmail,
-            password:hashedPassword
+            password:hashedPassword,
+            role:userRole
+
         }
         
     });
@@ -41,9 +46,10 @@ const register=async (userData)=>{
             success:true,
             message:"User registered successfully",
             user:{
-                "id":new_user.id,
-                "name":new_user.name,
-                "email":new_user.email
+                "id":newUser.id,
+                "name":newUser.name,
+                "email":newUser.email,
+                role: newUser.role
             }
     }
 }

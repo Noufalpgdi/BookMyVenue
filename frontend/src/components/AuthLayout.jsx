@@ -1,17 +1,19 @@
 function AuthLayout({ children, buttonText, onButtonClick }) {
     return (
         <div className="min-h-screen flex bg-gray-100">
+
             {/* Left Panel */}
-            <div className="w-1/3 bg-gradient-to-b from-teal-600 to-blue-900 text-white flex flex-col justify-center items-center p-10">
+            <div className="hidden lg:flex lg:w-1/3 bg-gradient-to-b from-teal-600 to-blue-900 text-white flex-col justify-center items-center p-10">
 
                 <h1 className="text-5xl font-bold mb-8">
                     BookMyVenue
                 </h1>
 
-                <p className="text-lg text-center mb-10">
+                <p className="text-lg text-center mb-10 leading-8">
                     Discover the perfect venue for every occasion.
                     <br />
-                    From weddings and conferences to parties and corporate events, BookMyVenue makes booking simple.
+                    From weddings and conferences to parties and corporate events,
+                    BookMyVenue makes booking simple.
                 </p>
 
                 <button
@@ -23,10 +25,12 @@ function AuthLayout({ children, buttonText, onButtonClick }) {
                 </button>
 
             </div>
-            <div className="w-2/3 flex justify-center items-center">
+
+            {/* Right Panel */}
+            <div className="flex-1 flex justify-center overflow-y-auto py-8 px-6">
                 {children}
             </div>
-            
+
         </div>
     );
 }

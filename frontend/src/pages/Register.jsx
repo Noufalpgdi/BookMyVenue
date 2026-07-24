@@ -23,6 +23,9 @@ function Register() {
 
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+    const [isVenueOwner, setIsVenueOwner] = useState(false);
+
     const handleRegister = async (e) => {
         e.preventDefault();
         setError("");
@@ -34,7 +37,7 @@ function Register() {
         try
         {
             setLoading(true);
-            await register(name, email, password);
+            await register(name, email, password, isVenueOwner ? "OWNER" : "USER");
             navigate("/login", {
                 state: {
                     success: "Registration successful! Please log in."
@@ -56,18 +59,18 @@ function Register() {
     };
     return (
         <AuthLayout buttonText="Login" onButtonClick={() => navigate("/login")}>
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-10 hover:shadow-3xl transition-all duration-300">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-8 hover:shadow-3xl transition-all duration-300">
 
-                <h2 className="text-4xl font-bold text-center mb-3">
+                <h2 className="text-3xl font-bold text-center mb-2">
                     Register
                 </h2>
 
-                <p className="text-center text-gray-500 mb-10">
+                <p className="text-center text-gray-500 mb-6">
                     Create your account to get started.
                 </p>
 
                 <form onSubmit={handleRegister}>
-                    <div className="mb-5">
+                    <div className="mb-4">
 
                         <label className="block mb-2 font-medium">
                             Full Name
@@ -92,7 +95,7 @@ function Register() {
                         </div>
 
                     </div>
-                    <div className="mb-5">
+                    <div className="mb-4">
 
                         <label className="block mb-2 font-medium">
                             Email Address
@@ -117,7 +120,7 @@ function Register() {
                         </div>
 
                     </div>
-                    <div className="mb-5">
+                    <div className="mb-4">
 
                         <label className="block mb-2 font-medium">
                             Password
@@ -150,7 +153,7 @@ function Register() {
                         </div>
 
                     </div>
-                    <div className="mb-5">
+                    <div className="mb-4">
 
                         <label className="block mb-2 font-medium">
                             Confirm Password
@@ -183,6 +186,32 @@ function Register() {
                         </div>
 
                     </div>
+                    <div className="mb-5 rounded-lg border border-gray-200 p-3 bg-gray-50">
+                        <div className="flex items-start gap-3">
+
+                            <input
+                                type="checkbox"
+                                id="isVenueOwner"
+                                checked={isVenueOwner}
+                                onChange={(e) => setIsVenueOwner(e.target.checked)}
+                                className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+
+                            <div>
+                                <label
+                                    htmlFor="isVenueOwner"
+                                    className="font-medium cursor-pointer"
+                                >
+                                    Register as Venue Owner
+                                </label>
+
+                                <p className="text-xs text-gray-500 mt-1 leading-5">
+                                    Create venues and manage bookings.
+                                </p>
+                            </div>
+
+                        </div>
+                    </div>
 
                     {
                         error && (
@@ -195,7 +224,7 @@ function Register() {
                     <button
                         type="submit"
                         disabled={loading}
-                        className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full bg-blue-600 text-white py-2.5 rounded-lg font-semibold hover:bg-blue-700 transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {loading ? "Creating Account..." : "Register"}
                     </button>

@@ -201,6 +201,7 @@ const getMyBookings = async (userId,page = 1,limit = 10)=>{
                         id: true,
                         name: true,
                         city: true,
+                        capacity:true,
                         imageUrl: true
                     }
                 },
@@ -257,6 +258,9 @@ const getBookingById = async (id,user)=>{
                     id: true,
                     name: true,
                     city: true,
+                    address:true,
+                    district:true,
+                    state:true,
                     imageUrl: true,
                     ownerId: true
                 }
@@ -273,7 +277,9 @@ const getBookingById = async (id,user)=>{
                     amount: true,
                     currency: true,
                     status: true,
-                    provider: true
+                    provider: true,
+                    transactionId:true,
+                    createdAt:true
                 }
             }
         }

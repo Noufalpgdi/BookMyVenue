@@ -27,7 +27,6 @@ function VenueList() {
 
     return (
         <div>
-            <Navbar />
             <h1>Venue List</h1>
 
             {

@@ -13,6 +13,7 @@ function Login()
     const [showPassword, setShowPassword] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
+    const from = location.state?.from || "/venues";
     const [successMessage] = useState(
         location.state?.success || ""
     );
@@ -24,6 +25,7 @@ function Login()
             });
         }
     }, [location.pathname, location.state, navigate]);
+
     const handleLogin= async(e)=>{
         e.preventDefault();
 
@@ -35,7 +37,7 @@ function Login()
             const { token, user } = await login(email, password);
             localStorage.setItem("token",token);
             localStorage.setItem("user",JSON.stringify(user));
-            navigate("/venues");
+            navigate(from, { replace: true });
         }
         catch(error)
         {
@@ -49,6 +51,7 @@ function Login()
         }
         
     };
+    
     return (
             <AuthLayout buttonText="Sign Up" onButtonClick={() => navigate("/register")}>
                 {/* Right Panel */}

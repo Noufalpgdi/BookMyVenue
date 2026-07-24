@@ -4,9 +4,9 @@ const venuService = require('./venue.service');
 const create = async(req,res,next)=>{
     try
     {
-        console.log(req.file);
+        console.log(req.files);
         console.log(req.body);
-        const result = await venuService.create(req.body,req.user.userId,req.file);
+        const result = await venuService.create(req.body,req.user.userId,req.files);
         return res.status(201).json(result);
     }
     catch(error)
@@ -41,6 +41,19 @@ const getFilters =async (req,res,next)=>
     }
 }
 
+const getVenueTypes = async(req,res,next)=>{
+    try
+    {
+        const result = await venuService.getVenueTypes();
+        return res.status(200).json(result);
+    }
+    catch(error)
+    {
+        console.error("getVenueTypes Error:", error);
+        next(error);
+    }
+}
+
 const getMyVenues = async(req,res,next)=>
 {
     try
@@ -58,6 +71,22 @@ const getById = async (req,res,next)=>{
     try
     {
         const result = await venuService.getById(req.params.id);
+
+        return res.status(200).json(result);
+    }
+    catch(error)
+    {
+        next(error)
+    }
+}
+
+
+const getVenueForEdit = async (req,res,next)=>
+{
+
+    try
+    {
+        const result = await venuService.getVenueForEdit(req.params.id,req.user);
 
         return res.status(200).json(result);
     }
@@ -114,7 +143,7 @@ const updateVenue = async (req,res,next)=>{
             req.params.id,
             req.user,
             req.body,
-            req.file
+            req.files
         );
         return res.status(200).json(result);
     }
@@ -170,8 +199,10 @@ module.exports = {
     create,
     getAll,
     getFilters,
+    getVenueTypes,
     getMyVenues,
     getById,
+    getVenueForEdit,
     getAllPendingApprovalVenues,
     approveVenue,
     rejectVenue,

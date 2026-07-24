@@ -1,5 +1,4 @@
 import {useState,useEffect} from "react";
-import Navbar from "../components/Navbar";
 import HeroSection from "../components/HeroSection";
 import SearchBar from "../components/SearchBar";
 import FeaturedVenues from "../components/FeaturedVenues";
@@ -49,7 +48,6 @@ function Home() {
 
     return (
         <>
-            <Navbar />
 
             <HeroSection />
 

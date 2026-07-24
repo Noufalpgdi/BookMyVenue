@@ -9,19 +9,19 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url = env("DATABASE_URL")
+  url      = env("DATABASE_URL")
 }
 
-model User{
-  id Int @id @default(autoincrement())
-  name String
-  email String  @unique
-  password String 
-  role Role @default(USER)
+model User {
+  id       Int    @id @default(autoincrement())
+  name     String
+  email    String @unique
+  password String
+  role     Role   @default(USER)
 
-  venues Venue[]
-  bookings  Booking[]
-  
+  venues   Venue[]
+  bookings Booking[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -32,36 +32,37 @@ enum Role {
   ADMIN
 }
 
-model Venue{
-  id Int @id @default(autoincrement())
-  name String
+model Venue {
+  id          Int    @id @default(autoincrement())
+  name        String
   description String
 
-  address String
-  city String
+  address  String
+  city     String
   district String
-  state String
+  state    String
 
-  latitude  Decimal? @db.Decimal(10,8)
-  longitude Decimal? @db.Decimal(11,8)
+  latitude  Decimal? @db.Decimal(10, 8)
+  longitude Decimal? @db.Decimal(11, 8)
 
-  capacity Int
-  pricePerHour Decimal @db.Decimal(10,2)
-  imageUrl String?
+  capacity     Int
+  pricePerHour Decimal      @db.Decimal(10, 2)
+  imageUrl     String?
+  images       VenueImage[]
 
-  ownerId Int 
-  owner User @relation(fields: [ownerId], references: [id])
+  ownerId Int
+  owner   User @relation(fields: [ownerId], references: [id])
 
-  bookings  Booking[]
+  bookings Booking[]
 
   venueType VenueType
   amenities String[]
 
   approvalStatus VenueApprovalStatus @default(PENDING)
 
-  isActive Boolean @default(true)
+  isActive  Boolean @default(true)
   isDeleted Boolean @default(false)
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -75,6 +76,7 @@ model Venue{
   @@index([approvalStatus, venueType])
   @@index([approvalStatus, city, venueType])
 }
+
 enum VenueType {
   AUDITORIUM
   CONFERENCE_HALL
@@ -85,29 +87,45 @@ enum VenueType {
   SPORTS_ARENA
   OTHER
 }
+
 enum VenueApprovalStatus {
   PENDING
   APPROVED
   REJECTED
 }
 
-model Booking{
+model VenueImage {
   id Int @id @default(autoincrement())
-  userId Int
-  user User @relation(fields: [userId], references: [id])
-  venueId Int
-  venue Venue @relation(fields: [venueId], references: [id])
-  startTime DateTime
-  endTime DateTime
-  totalAmount Decimal @db.Decimal(10, 2)
-  status BookingStatus @default(PENDING)
-  isOwnerBooking Boolean        @default(false)
-  payment Payment?
-  isDeleted       Boolean  @default(false)
-  cancelledAt     DateTime?
-  createdAt DateTime @default(now())
-  updatedAt    DateTime @updatedAt
 
+  imageUrl String
+
+  displayOrder Int @default(0)
+
+  venueId Int
+
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([venueId])
+}
+
+model Booking {
+  id             Int           @id @default(autoincrement())
+  userId         Int
+  user           User          @relation(fields: [userId], references: [id])
+  venueId        Int
+  venue          Venue         @relation(fields: [venueId], references: [id])
+  startTime      DateTime
+  endTime        DateTime
+  totalAmount    Decimal       @db.Decimal(10, 2)
+  status         BookingStatus @default(PENDING)
+  isOwnerBooking Boolean       @default(false)
+  payment        Payment?
+  isDeleted      Boolean       @default(false)
+  cancelledAt    DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   @@index([userId])
   // Optimizes overlap checking queries
@@ -122,30 +140,29 @@ enum BookingStatus {
 }
 
 model Payment {
-  id                Int      @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  bookingId         Int      @unique
-  booking           Booking  @relation(fields:[bookingId], references:[id])
+  bookingId Int     @unique
+  booking   Booking @relation(fields: [bookingId], references: [id])
 
-  amount            Decimal  @db.Decimal(10,2)
-  currency          String   @default("INR")
+  amount   Decimal @db.Decimal(10, 2)
+  currency String  @default("INR")
 
-  status            PaymentStatus @default(PENDING)
-  provider          PaymentProvider
+  status   PaymentStatus   @default(PENDING)
+  provider PaymentProvider
 
   providerOrderId   String? @unique
   providerPaymentId String? @unique
   transactionId     String? @unique
 
-  refundedAt        DateTime?
-  refundAmount Decimal? @db.Decimal(10,2)
+  refundedAt   DateTime?
+  refundAmount Decimal?  @db.Decimal(10, 2)
 
   failureReason String?
   refundReason  String?
 
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum PaymentStatus {

@@ -11,7 +11,7 @@ router.post(
     "/",
     authMiddleware,
     authorize("OWNER","ADMIN"),
-    uploadVenueImage.single("image"),
+    uploadVenueImage.array("images",10),
     venuController.create
 );
 
@@ -20,6 +20,12 @@ router.get("/",venuController.getAll);
 router.get(
     "/filters",
     venuController.getFilters
+);
+
+router.get(
+    "/venueTypes",
+    authMiddleware,
+    venuController.getVenueTypes
 );
 
 router.get(
@@ -38,13 +44,22 @@ router.get(
     
 router.get("/:id",venuController.getById);
 
+// Owner Edit
+router.get(
+    "/owner/:id",
+    authMiddleware,
+    authorize("OWNER", "ADMIN"),
+    validateIdParam,
+    venuController.getVenueForEdit
+);
+
 
 
 router.patch(
     "/:id",
     authMiddleware,
     authorize("OWNER","ADMIN"),
-    uploadVenueImage.single("image"),
+    uploadVenueImage.array("images",10),
     validateIdParam,
     venuController.updateVenue
 );

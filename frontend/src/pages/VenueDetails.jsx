@@ -2,81 +2,85 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { getVenueById } from "../api/venueApi";
 
-function VenueDetails() {
+import Amenities from "../components/venue/Amenities";
+import BookingCard from "../components/venue/BookingCard";
+import PerfectFor from "../components/venue/PerfectFor";
+import Reviews from "../components/venue/Reviews";
+import VenueGallery from "../components/venue/VenueGallery";
+import VenueHeader from "../components/venue/VenueHeader";
+import VenueHighlights from "../components/venue/VenueHighlights";
 
+function VenueDetails() {
     const { id } = useParams();
 
     const [venue, setVenue] = useState(null);
+    const [error, setError] = useState("");
 
-    const loadVenue = async () => {
-
+    const fetchVenue = async () => {
         try {
-
             const result = await getVenueById(id);
-
             setVenue(result.venue);
-
+        } catch (error) {
+            setError("Unable to load venue.");
         }
-        catch (error) {
-
-            console.log(
-                error.response?.data || error.message
-            );
-
-        }
-
     };
 
     useEffect(() => {
+        fetchVenue();
+    }, [id]);
 
-        loadVenue();
-
-    }, []);
+    if (error) {
+        return (
+            <div className="text-center mt-20 text-red-600 text-xl">
+                {error}
+            </div>
+        );
+    }
 
     if (!venue) {
-
         return (
-
             <div className="text-center mt-20 text-xl">
-
                 Loading...
-
             </div>
-
         );
-
     }
 
     return (
+        <div className="max-w-7xl mx-auto p-8">
 
-        <div className="max-w-6xl mx-auto p-10">
+            {/* Venue Gallery */}
+            <VenueGallery venue={venue} />
 
-            <img
-                src="https://images.unsplash.com/photo-1519167758481-83f550bb49b3"
-                alt={venue.name}
-                className="w-full h-[500px] object-cover rounded-3xl"
-            />
+            {/* Header + Booking */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
 
-            <h1 className="text-5xl font-bold mt-10">
-                {venue.name}
-            </h1>
+                {/* Left Section */}
+                <div className="lg:col-span-2">
 
-            <p className="text-gray-500 text-xl mt-5">
-                📍 {venue.city}
-            </p>
+                    <VenueHeader venue={venue} />
 
-            <p className="text-xl mt-5">
-                👥 Capacity : {venue.capacity}
-            </p>
+                    <VenueHighlights venue={venue} />
 
-            <p className="mt-8 text-lg">
-                {venue.description}
-            </p>
+                    <Amenities venue={venue} />
+
+
+                    {/* <PerfectFor venue={venue} /> */}
+                    
+
+                </div>
+
+                {/* Right Section */}
+                <div>
+                    <BookingCard venue={venue} />
+                </div>
+
+            </div>
+
+            {/* <Reviews venue={venue} /> */}
+            
 
         </div>
-
     );
-
 }
 
 export default VenueDetails;
