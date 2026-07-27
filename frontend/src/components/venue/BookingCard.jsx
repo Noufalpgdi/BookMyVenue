@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { createBooking } from "../../api/bookingApi";
+import {createPaymentOrder,verifyPayment} from "../../api/paymentApi";
+import loadRazorpay from "../../utils/loadRazorpay";
 import { useNavigate,useLocation  } from "react-router-dom";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
+import { toast } from "react-toastify";
 
 function BookingCard({ venue }) {
     const [bookingDate, setBookingDate] = useState(null);
@@ -37,6 +40,99 @@ function BookingCard({ venue }) {
 
         return hours * pricePerHour;
     };
+
+    const openRazorpay = (order, bookingId) => {
+        const options = {
+
+            key: order.key,
+
+            amount: order.amount,
+
+            currency: order.currency,
+
+            order_id: order.orderId,
+
+            name: "BookMyVenue",
+
+            description: `Booking for ${venue.name}`,
+
+            theme: {
+                color: "#2563EB"
+            },
+
+            // Add retry here
+            retry: {
+                enabled: true,
+                max_count: 2
+            },
+
+            notes: {
+                bookingId: bookingId,
+                venueId: venue.id
+            },
+
+            handler: async function (response) {
+
+                try 
+                {
+
+                    const verifyResponse = await verifyPayment({
+
+                        bookingId,
+
+                        razorpay_payment_id: response.razorpay_payment_id,
+
+                        razorpay_order_id: response.razorpay_order_id,
+
+                        razorpay_signature: response.razorpay_signature
+
+                    });
+
+                    console.log("Payment verified", verifyResponse);
+
+                    if (verifyResponse.success) {
+
+                        toast.success("Payment completed successfully.");
+
+                        setBookingDate(null);
+                        setStartTime("");
+                        setEndTime("");
+
+                        setTimeout(() => {
+                            navigate("/my-bookings");
+                        }, 1000);
+
+                    }
+
+                } 
+                catch (error) 
+                {
+
+                    console.error(error);
+
+                    toast.error( error.response?.data?.message || "Payment verification failed.");
+
+                }
+
+            },
+            modal: {
+
+                ondismiss: function () {
+                    
+                    console.log("Payment cancelled");
+
+                    toast.info("Payment cancelled");
+
+                }
+
+            },
+        };
+
+        const paymentObject = new window.Razorpay(options);
+
+        paymentObject.open();
+    };
+
     const handleBooking = async () => {
 
         if (loading) return;
@@ -53,7 +149,11 @@ function BookingCard({ venue }) {
         }
 
         if (!bookingDate || !startTime || !endTime) {
-            alert("Please select booking date, start time and end time.");
+
+            //alert("Please select booking date, start time and end time.");
+
+            toast.error("Please select booking date, start time and end time");
+
             return;
         }
 
@@ -68,7 +168,11 @@ function BookingCard({ venue }) {
         );
 
         if (startDateTime >= endDateTime) {
-            alert("End time must be after start time.");
+
+            //alert("End time must be after start time.");
+
+            toast.error("End time must be after start time.");
+
             return;
         }
 
@@ -82,22 +186,34 @@ function BookingCard({ venue }) {
 
             setLoading(true);
 
-            const response = await createBooking(bookingData);
+            const bookingResponse = await createBooking(bookingData);
 
-            alert(response.message || "Booking created successfully!");
+            const bookingId = bookingResponse.booking.id;
 
-            setBookingDate("");
-            setStartTime("");
-            setEndTime("");
+            // NEW
+            const razorpayLoaded = await loadRazorpay();
 
-            navigate("/my-bookings");
+            if (!razorpayLoaded) {
+
+                //alert("Failed to load Razorpay.");
+
+                toast.error("Failed to load Razorpay.");
+
+                return;
+            }
+
+            const order = await createPaymentOrder(bookingId);
+
+            openRazorpay(order, bookingId);
 
         } catch (error) {
 
-            alert(
-                error.response?.data?.message ||
-                "Booking failed."
-            );
+            console.error(error);
+
+            //alert(error.response?.data?.message || "Booking failed.");
+
+            toast.error(error.response?.data?.message || "Booking failed.");
+            
 
         } finally {
 
